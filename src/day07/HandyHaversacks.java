@@ -6,10 +6,12 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public class HandyHaversacks {
-    Set<Bag> bags;
+    Set<Bag> bagRules;
+    Map<String, Bag> bagMap;
 
     public HandyHaversacks() {
-        bags = new HashSet<>();
+        bagRules = new HashSet<>();
+        bagMap = new HashMap<>();
     }
 
     public static void main(String[] args) {
@@ -17,25 +19,25 @@ public class HandyHaversacks {
     }
 
     /**
-     * find bags that can contain a color either directly or by containing a bag that can contain the color.
-     * @param color
-     * @return
+     * Count the bags that can contain a bag of a specific color. Bags can contain bags that contain the colored bag recursively.
+     * @param color the color of bag that we're searching for.
+     * @return a count of bags that can directly or indirectly contain a bag of this color.
      */
     public Integer canContainColor(String color) {
-        Set<Bag> all = new HashSet<>(bags);
+        Set<Bag> all = new HashSet<>(bagRules);
         Set<String> never = new HashSet<>();
         Set<String> contain = new HashSet<>();
         while (all.size() > 0) {
             for (Iterator<Bag> iterator = all.iterator(); iterator.hasNext(); ) {
                 Bag bag = iterator.next();
-                if(bag.getContainedBags().keySet().contains(color)) {
+                if(bag.getContents().keySet().contains(color)) {
                     contain.add(bag.getColor());
                     iterator.remove();
-                } else if(bag.hasNoOtherbags()) {
+                } else if(bag.isEmpty()) {
                     iterator.remove();
                     never.add(bag.getColor());
                 } else {
-                    if (allBagsAreKnownToBeNever(bag, never)) {
+                    if (bagContainsBagsOnlyInSet(bag, never)) {
                         never.add(bag.getColor());
                         iterator.remove();
                     } else if (containsBagsThatContainColor(bag, contain)) {
@@ -49,18 +51,19 @@ public class HandyHaversacks {
     }
 
     /**
+     * Return true if the bag contains bags only
      * Return true if all bags that this bag can contain cannot contain the bag
      * @param bag - the bag we're checking
      * @param bags - the list of bags that cannot contain bags of a specific color
-     * @return
+     * @return bagContainsOnlyBagsInSet
      */
-    private boolean allBagsAreKnownToBeNever(Bag bag, Set<String> bags) {
-        Set<String> containedColors = bag.getContainedBags().keySet();
-        return containedColors.stream().allMatch(bagColor -> bags.contains(bagColor));
+    private boolean bagContainsBagsOnlyInSet(Bag bag, Set<String> bags) {
+        Set<String> contents = bag.getContents().keySet();
+        return contents.stream().allMatch(bagColor -> bags.contains(bagColor));
     }
 
     private boolean containsBagsThatContainColor(Bag b, Set<String> bags) {
-        return b.getContainedBags().keySet().stream().anyMatch(containedBagColor -> bags.contains(containedBagColor));
+        return b.getContents().keySet().stream().anyMatch(containedBagColor -> bags.contains(containedBagColor));
     }
 
     public void run() {
@@ -74,14 +77,37 @@ public class HandyHaversacks {
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             Bag bag = new Bag(line);
-            bags.add(bag);
+            bagRules.add(bag);
+            bagMap.put(bag.getColor(), bag);
         }
 
         return String.format("%d", canContainColor("shiny gold"));
     }
 
     public String solvePart2(String input) {
-        return "";
+        Bag shinyGoldBag = bagMap.get("shiny gold");
+        Map<String, Integer> bags = new HashMap<>(shinyGoldBag.getContents());
+
+        int count = 0;
+        while (!bags.isEmpty()) {
+            for (String color : new HashSet<>(bags.keySet())) {
+                Bag b = bagMap.get(color);
+                if (b.isEmpty()) {
+                    Integer bagCount = bags.remove(color);
+                    count += bagCount;
+                } else {
+                    Integer bagCount = bags.remove(color);
+                    count += bagCount;
+                    b.getContents().forEach((c, i) -> {
+                        if (!bags.containsKey(c)) {
+                            bags.put(c, 0);
+                        }
+                        bags.put(c, bags.get(c) + (bagCount * i));
+                    });
+                }
+            }
+        }
+        return String.format("%d", count);
     }
 
     public String getPuzzleInput() {
