@@ -15,11 +15,11 @@ public class Template {
     }
 
     public String solvePart1(String input) {
-        return "";
+        return input;
     }
 
     public String solvePart2(String input) {
-        return "";
+        return input;
     }
 
     public String getPuzzleInput() {
